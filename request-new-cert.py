@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 
-import sys
+import argparse
+import est_client_python.est.errors as est_errors
 import est_client_python.est.client as est_client
 
 if __name__ == "__main__":
-    print(sys.path)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ip", required=True)
+    parser.add_argument("--port", type=int, required=True)
+    args = parser.parse_args()
 
     # Location of EST Server
-    host = 'testrfc7030.cisco.com'
-    port = 8443
+    host = args.ip  # 'testrfc7030.cisco.com'
+    port = args.port  # 8443
 
     # Root CA used to sign the EST servers Server certificate
-    implicit_trust_anchor_cert_path = 'server.pem'
+    implicit_trust_anchor_cert_path = 'cacert.pem'
 
     client = est_client.Client(host, port, implicit_trust_anchor_cert_path)
 
     # Get CSR attributes from EST server as an OrderedDict.
     csr_attrs = client.csrattrs()
 
-    # Get EST server CA certs.
+    # Get latest EST server CA certs.
     ca_certs = client.cacerts()
 
     username = 'estuser'
@@ -39,6 +44,8 @@ if __name__ == "__main__":
 
     # Enroll: get cert signed by the EST server.
     client_cert = client.simpleenroll(csr)
+
+    print(client_cert)
 
     # # Re-Enroll: Renew cert.  The previous cert/key can be passed for auth if needed.
     # client_cert = client.simplereenroll(csr)
