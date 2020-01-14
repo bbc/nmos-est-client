@@ -1,14 +1,118 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import est_client_python.est.errors as est_errors
 import est_client_python.est.client as est_client
+
+
+class NmosEst(object):
+    def __init__(self, host, port,
+                 cacert_path,
+                 ext_client_cert_path,
+                 ext_client_key_path,
+                 server_cert_path=None,
+                 server_key_path=None):
+        """
+        Class used to provision an NMOS Node with the Root CA and TLS Server certificate, can also be used
+        to renew both when expiring.
+        If a valid TLS server certificate for the current domain is not present, the externally issued client
+        certificate will be used for authentication with the EST server.
+        """
+        self.estClient = est_client.Client(host, port, implicit_trust_anchor_cert_path=False)
+        self.cacert_path = cacert_path
+        self.ext_client_cert_path = ext_client_cert_path
+        self.ext_client_key_path = ext_client_key_path
+        self.server_cert_path = server_cert_path
+        self.server_key_path = server_key_path
+
+    def _writeDataToFile(self, data, path, private=False):
+        if not isinstance(data, str) and not isinstance(data, bytes):
+            print(f"Cert data is not a string or bytes, file: {path}")
+            return False
+
+        if isinstance(data, bytes):
+            # Convert bytes to string
+            data = data.decode('ascii')
+
+        with open(path, 'w') as f:
+            f.write(data)
+
+        if private:
+            os.chmod(path, 0o400)
+
+    def _verifyCert(self):
+        """
+        Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
+        """
+
+    def _createCsr(self, common_name, cipher_suite='rsa_2048'):
+        # Create CSR and get private key used to sign the CSR.
+        country = 'GB'
+        city = 'Manchester'
+        organization = 'AMWA'
+        organizational_unit = 'ENG'
+        email_address = 'test@workshop.nmos.tv'
+        private_key, csr = self.estClient.create_csr(common_name,
+                                                     country=country,
+                                                     city=city,
+                                                     organization=organization,
+                                                     organizational_unit=organizational_unit,
+                                                     email_address=email_address,
+                                                     cipher_suite=cipher_suite)
+
+        return private_key, csr
+
+    def getCaCert(self, newPath):
+        # Get CA Cert, but do not verify the authenticity of the EST server
+        try:
+            ca_cert = self.estClient.cacerts()
+        except est_errors.RequestError as e:
+            print("Failed to get Root CA from EST Server")
+            print(e)
+            return
+
+        self._writeDataToFile(ca_cert, newPath)
+
+        # Use latest Root CA for future requests
+        self.estClient.implicit_trust_anchor_cert_path = newPath
+
+    def getNewCert(self, newPath):
+        """
+        Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server 
+        """
+
+        # Get CSR attributes from EST server as an OrderedDict.
+        csr_attrs = self.estClient.csrattrs()
+
+        print(csr_attrs)
+
+        private_key, csr = self._createCsr('testProduct')
+
+        self._writeDataToFile(private_key, 'test.key', private=False)
+
+        ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
+
+        client_cert = self.estClient.simpleenroll(csr, ext_cert)
+
+        self._writeDataToFile(client_cert, newPath)
+
+    def renewCert(self):
+        """
+        Renew existing TLS certificate, using current certificate for authentication with EST server
+        """
+
+        print('not implemented')
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", required=True)
-    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--ip", default='bbc-0.workshop.nmos.tv')
+    parser.add_argument("--port", type=int, default=8085)
+    parser.add_argument("--cacert", default='cacert.pem')
+    parser.add_argument("--cert", default='manufacturer1.ecdsa.product1.cert.chain.pem')
+    parser.add_argument("--key", default='manufacturer1.ecdsa.product1.key.pem')
     args = parser.parse_args()
 
     # Location of EST Server
@@ -16,36 +120,31 @@ if __name__ == "__main__":
     port = args.port  # 8443
 
     # Root CA used to sign the EST servers Server certificate
-    implicit_trust_anchor_cert_path = 'cacert.pem'
+    ca_cert_path = args.cacert
+    client_cert_path = args.cert
+    client_key_path = args.key
 
-    client = est_client.Client(host, port, implicit_trust_anchor_cert_path)
+    print(f'Using EST Server {host}:{port}')
+    print(f'Root CA: {ca_cert_path}')
+    print(f'Client Certificate: {client_cert_path}')
+    print(f'Client Key: {client_key_path}')
 
-    # Get CSR attributes from EST server as an OrderedDict.
-    csr_attrs = client.csrattrs()
+    nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
     # Get latest EST server CA certs.
-    ca_certs = client.cacerts()
+    ca_certs = nmos_est_client.getCaCert(ca_cert_path)
 
-    username = 'estuser'
-    password = 'estpwd'
-    client.set_basic_auth(username, password)
+    nmos_est_client.getNewCert(f'est.{client_cert_path}')
 
-    # Create CSR and get private key used to sign the CSR.
-    common_name = 'test'
-    country = 'US'
-    state = 'Massachusetts'
-    city = 'Boston'
-    organization = 'Cisco Systems'
-    organizational_unit = 'ENG'
-    email_address = 'test@cisco.com'
-    priv, csr = client.create_csr(common_name, country, state, city,
-                                         organization, organizational_unit,
-                                         email_address)
+    exit(0)
 
-    # Enroll: get cert signed by the EST server.
-    client_cert = client.simpleenroll(csr)
 
-    print(client_cert)
 
-    # # Re-Enroll: Renew cert.  The previous cert/key can be passed for auth if needed.
-    # client_cert = client.simplereenroll(csr)
+    """
+    Example workflow of EST class
+    1. Discover EST server (config file or DNS-SD)
+    2. Request root CA
+    3. Request RSA cert using external client cert 
+    4. Request ECDSA cert using external client cert 
+    4. Renew both certs
+    """
