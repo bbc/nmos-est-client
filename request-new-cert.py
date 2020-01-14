@@ -43,10 +43,68 @@ class NmosEst(object):
         if private:
             os.chmod(path, 0o400)
 
-    def _verifyCert(self):
+    def verifyCert(self, cert_data):
         """
         Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
         """
+        cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
+
+        asn1_date = cert.get_notAfter()
+        expiry_date = self.convertAsn1DateToString(asn1_date)
+        date_now = dt.now()
+
+        if date_now > expiry_date:
+            print(f'Certificate has expired, expiry date: {expiry_date}')
+            return False
+
+        return True
+
+    def verifyNmosCert(self, cert_data):
+        """
+        Check that the TLS certificate is valid for use as an NMOS Server certificate.
+        Validates the date and domain and certificate usage
+        """
+        if not self.verifyCert(cert_data):
+            return False
+
+        cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
+
+        for i in range(cert.get_extension_count()):
+            if cert.get_extension(i).get_short_name() == b'extendedKeyUsage':
+                if str(cert.get_extension(i)) != 'TLS Web Server Authentication, TLS Web Client Authentication':
+                    print(f'Certificate does not support Extended Key usage for both Web Server and Web Clients: \
+                          {cert.get_extension(i)}')
+
+        return True
+
+    def inspectCert(self, cert_data):
+
+        cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
+
+        print(f'CA Issuer: {cert.get_issuer().get_components()[0][1]}')
+        print(f'Cert Subject: {cert.get_subject()}')
+
+        expiry_date = cert.get_notAfter()
+        expiry_date = self.convertAsn1DateToString(expiry_date)
+
+        print(f'Expiry Date: {expiry_date}')
+        print('Extensions:')
+        for i in range(cert.get_extension_count()):
+            print(f'   {cert.get_extension(i)}')
+
+    def convertAsn1DateToString(self, ans1_date):
+        if isinstance(ans1_date, bytes):
+            # Convert bytes to string
+            ans1_date = ans1_date.decode('ascii')
+
+        # Strip tailing Z from string
+        if ans1_date[-1:] == 'Z':
+            ans1_date = ans1_date[:-1]
+
+        # Covert to date object
+        date = dt.strptime(ans1_date, '%Y%m%d%H%M%S')
+
+        return date
 
     def _createCsr(self, common_name, cipher_suite='rsa_2048'):
         # Create CSR and get private key used to sign the CSR.
@@ -81,62 +139,40 @@ class NmosEst(object):
 
     def getNewCert(self, newPath):
         """
-        Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server 
+        Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server
         """
 
         # Get CSR attributes from EST server as an OrderedDict.
-        csr_attrs = self.estClient.csrattrs()
-
-        print(csr_attrs)
+        # csr_attrs = self.estClient.csrattrs()
 
         private_key, csr = self._createCsr('testProduct')
-
-        self._writeDataToFile(private_key, 'test.key', private=False)
 
         ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
 
         client_cert = self.estClient.simpleenroll(csr, ext_cert)
 
+        self._writeDataToFile(private_key, f'est.{self.ext_client_key_path}')
         self._writeDataToFile(client_cert, newPath)
 
         self.inspectCert(client_cert)
+        self.verifyNmosCert(client_cert)
 
-    def renewCert(self):
+    def renewCert(self, newPath):
         """
         Renew existing TLS certificate, using current certificate for authentication with EST server
         """
 
-        print('not implemented')
+        # Get CSR attributes from EST server as an OrderedDict.
+        # csr_attrs = self.estClient.csrattrs()
 
-    def inspectCert(self, cert_data):
+        private_key, csr = self._createCsr('testProduct')
 
-        cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
+        cert = (f'est.{self.ext_client_cert_path}', f'est.{self.ext_client_key_path}')
 
-        print(f'CA Issuer: {cert.get_issuer().get_components()[0][1]}')
-        print(f'Cert Subject: {cert.get_subject()}')
+        client_cert = self.estClient.simplereenroll(csr, cert)
 
-        expiry_date = cert.get_notAfter()
-        expiry_date = self.convertAsn1DateToString(expiry_date)
-
-        print(f'Expiry Date: {expiry_date}')
-        print('Extensions:')
-        for i in range(cert.get_extension_count()):
-            print(f'   {cert.get_extension(i)}')
-
-    def convertAsn1DateToString(self, ans1_date):
-        if isinstance(ans1_date, bytes):
-            # Convert bytes to string
-            ans1_date = ans1_date.decode('ascii')
-
-        # Strip tailing Z from string
-        if ans1_date[-1:] == 'Z':
-            ans1_date = ans1_date[:-1]
-
-        # Covert to date object
-        date = dt.strptime(ans1_date, '%Y%m%d%H%M%S')
-
-        return date
-
+        self._writeDataToFile(private_key, f'est1.{self.ext_client_key_path}')
+        self._writeDataToFile(client_cert, newPath)
 
 
 if __name__ == "__main__":
@@ -170,15 +206,13 @@ if __name__ == "__main__":
 
     nmos_est_client.getNewCert(f'est.{client_cert_path}')
 
-    exit(0)
-
-
+    nmos_est_client.renewCert(f'est1.{client_cert_path}')
 
     """
     Example workflow of EST class
     1. Discover EST server (config file or DNS-SD)
     2. Request root CA
-    3. Request RSA cert using external client cert 
-    4. Request ECDSA cert using external client cert 
+    3. Request RSA cert using external client cert
+    4. Request ECDSA cert using external client cert
     4. Renew both certs
     """
