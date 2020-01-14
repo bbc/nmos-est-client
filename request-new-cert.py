@@ -3,9 +3,12 @@
 import argparse
 import os
 from datetime import datetime as dt
+from time import sleep
 import est_client_python.est.errors as est_errors
 import est_client_python.est.client as est_client
 import OpenSSL.crypto as openssl
+
+NUM_TRY_LATER_ATTEMPTS = 3  # Number of times request should be resent on HTTP 202-Try Later
 
 
 class NmosEst(object):
@@ -28,54 +31,57 @@ class NmosEst(object):
         self.server_cert_path = server_cert_path
         self.server_key_path = server_key_path
 
-    def _writeDataToFile(self, data, path, private=False):
-        if not isinstance(data, str) and not isinstance(data, bytes):
-            print(f"Cert data is not a string or bytes, file: {path}")
-            return False
+    def isCertValid(self, cert_data):
+        """Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
 
-        if isinstance(data, bytes):
-            # Convert bytes to string
-            data = data.decode('ascii')
+        Args:
+            cert_data: String of certificate data
 
-        with open(path, 'w') as f:
-            f.write(data)
-
-        if private:
-            os.chmod(path, 0o400)
-
-    def verifyCert(self, cert_data):
-        """
-        Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
+        Returns:
+            True if certificate passes all tests
         """
         cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
 
-        asn1_date = cert.get_notAfter()
-        expiry_date = self.convertAsn1DateToString(asn1_date)
-        date_now = dt.now()
-
-        if date_now > expiry_date:
-            print(f'Certificate has expired, expiry date: {expiry_date}')
+        if not self.isCertDateValid(cert):
             return False
 
         return True
 
     def verifyNmosCert(self, cert_data):
-        """
-        Check that the TLS certificate is valid for use as an NMOS Server certificate.
+        """Check that the TLS certificate is valid for use as an NMOS Server certificate.
         Validates the date and domain and certificate usage
+
+        Args:
+            cert_data: String of certificate data
+
+        Returns:
+            True if certificate passes all tests
         """
-        if not self.verifyCert(cert_data):
-            return False
+        test_results = {
+            "basic_validation": False,
+            "extended_key_usage": False
+        }
+
+        test_results['basic_validation'] = self.isCertValid(cert_data)
 
         cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
 
         for i in range(cert.get_extension_count()):
             if cert.get_extension(i).get_short_name() == b'extendedKeyUsage':
-                if str(cert.get_extension(i)) != 'TLS Web Server Authentication, TLS Web Client Authentication':
+                if str(cert.get_extension(i)) == 'TLS Web Server Authentication, TLS Web Client Authentication':
+                    test_results['extended_key_usage'] = True
+                else:
                     print(f'Certificate does not support Extended Key usage for both Web Server and Web Clients: \
                           {cert.get_extension(i)}')
 
-        return True
+        cert_is_valid = True
+        for test in test_results:
+            result = ('Passed' if test_results[test] else 'Failed')
+            print(f'Test {test}: {result}')
+            if not test_results[test]:
+                cert_is_valid = False
+
+        return cert_is_valid
 
     def inspectCert(self, cert_data):
 
@@ -91,6 +97,16 @@ class NmosEst(object):
         print('Extensions:')
         for i in range(cert.get_extension_count()):
             print(f'   {cert.get_extension(i)}')
+
+    def isCertDateValid(self, cert_object):
+        asn1_date = cert_object.get_notAfter()
+        expiry_date = self.convertAsn1DateToString(asn1_date)
+        date_now = dt.now()
+
+        if date_now > expiry_date:
+            print(f'Certificate has expired, expiry date: {expiry_date}')
+            return False
+        return True
 
     def convertAsn1DateToString(self, ans1_date):
         if isinstance(ans1_date, bytes):
@@ -137,7 +153,7 @@ class NmosEst(object):
         # Use latest Root CA for future requests
         self.estClient.implicit_trust_anchor_cert_path = newPath
 
-    def getNewCert(self, newPath):
+    def getNewCert(self, hostname, newPath):
         """
         Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server
         """
@@ -145,17 +161,20 @@ class NmosEst(object):
         # Get CSR attributes from EST server as an OrderedDict.
         # csr_attrs = self.estClient.csrattrs()
 
-        private_key, csr = self._createCsr('testProduct')
+        private_key, csr = self._createCsr(hostname)
 
         ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
 
-        client_cert = self.estClient.simpleenroll(csr, ext_cert)
+        cert_response = self._request_cert(self.estClient.simpleenroll, csr, ext_cert)
+        if not cert_response:
+            print('Failed to request new TLS certificate')
+            return False
 
         self._writeDataToFile(private_key, f'est.{self.ext_client_key_path}')
-        self._writeDataToFile(client_cert, newPath)
+        self._writeDataToFile(cert_response, newPath)
 
-        self.inspectCert(client_cert)
-        self.verifyNmosCert(client_cert)
+        self.inspectCert(cert_response)
+        self.verifyNmosCert(cert_response)
 
     def renewCert(self, newPath):
         """
@@ -169,10 +188,47 @@ class NmosEst(object):
 
         cert = (f'est.{self.ext_client_cert_path}', f'est.{self.ext_client_key_path}')
 
-        client_cert = self.estClient.simplereenroll(csr, cert)
+        cert_response = self._request_cert(self.estClient.simplereenroll, csr, cert)
+        if not cert_response:
+            print('Failed to request new TLS certificate')
+            return False
 
         self._writeDataToFile(private_key, f'est1.{self.ext_client_key_path}')
-        self._writeDataToFile(client_cert, newPath)
+        self._writeDataToFile(cert_response, newPath)
+
+    def _request_cert(self, method, *args):
+        success = False
+        for x in range(NUM_TRY_LATER_ATTEMPTS):
+            try:
+                returned_cert = method(*args)
+                success = True
+                break
+            except est_errors.TryLater as e:
+                print(f'Try request certificate again in {e.seconds} seconds')
+                sleep(e.seconds)
+            except est_errors.RequestError as e:
+                print("Failed to get TLS Certificate from EST Server")
+                print(e)
+                return False
+        if not success:
+            return False
+
+        return returned_cert
+
+    def _writeDataToFile(self, data, path, private=False):
+        if not isinstance(data, str) and not isinstance(data, bytes):
+            print(f"Cert data is not a string or bytes, file: {path}")
+            return False
+
+        if isinstance(data, bytes):
+            # Convert bytes to string
+            data = data.decode('ascii')
+
+        with open(path, 'w') as f:
+            f.write(data)
+
+        if private:
+            os.chmod(path, 0o400)
 
 
 if __name__ == "__main__":
@@ -186,8 +242,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Location of EST Server
-    host = args.ip  # 'testrfc7030.cisco.com'
-    port = args.port  # 8443
+    host = args.ip
+    port = args.port
 
     # Root CA used to sign the EST servers Server certificate
     ca_cert_path = args.cacert
@@ -196,15 +252,15 @@ if __name__ == "__main__":
 
     print(f'Using EST Server {host}:{port}')
     print(f'Root CA: {ca_cert_path}')
-    print(f'Client Certificate: {client_cert_path}')
-    print(f'Client Key: {client_key_path}')
+    print(f'External Certificate: {client_cert_path}')
+    print(f'External Private Key: {client_key_path}')
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
     # Get latest EST server CA certs.
     ca_certs = nmos_est_client.getCaCert(ca_cert_path)
 
-    nmos_est_client.getNewCert(f'est.{client_cert_path}')
+    nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'est.{client_cert_path}')
 
     nmos_est_client.renewCert(f'est1.{client_cert_path}')
 
