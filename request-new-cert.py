@@ -2,8 +2,10 @@
 
 import argparse
 import os
+from datetime import datetime as dt
 import est_client_python.est.errors as est_errors
 import est_client_python.est.client as est_client
+import OpenSSL.crypto as openssl
 
 
 class NmosEst(object):
@@ -97,12 +99,44 @@ class NmosEst(object):
 
         self._writeDataToFile(client_cert, newPath)
 
+        self.inspectCert(client_cert)
+
     def renewCert(self):
         """
         Renew existing TLS certificate, using current certificate for authentication with EST server
         """
 
         print('not implemented')
+
+    def inspectCert(self, cert_data):
+
+        cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
+
+        print(f'CA Issuer: {cert.get_issuer().get_components()[0][1]}')
+        print(f'Cert Subject: {cert.get_subject()}')
+
+        expiry_date = cert.get_notAfter()
+        expiry_date = self.convertAsn1DateToString(expiry_date)
+
+        print(f'Expiry Date: {expiry_date}')
+        print('Extensions:')
+        for i in range(cert.get_extension_count()):
+            print(f'   {cert.get_extension(i)}')
+
+    def convertAsn1DateToString(self, ans1_date):
+        if isinstance(ans1_date, bytes):
+            # Convert bytes to string
+            ans1_date = ans1_date.decode('ascii')
+
+        # Strip tailing Z from string
+        if ans1_date[-1:] == 'Z':
+            ans1_date = ans1_date[:-1]
+
+        # Covert to date object
+        date = dt.strptime(ans1_date, '%Y%m%d%H%M%S')
+
+        return date
+
 
 
 if __name__ == "__main__":

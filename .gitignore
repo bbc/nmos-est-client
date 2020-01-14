@@ -1,6 +1,7 @@
 *.pem
 *.p7*
 *.crt
+*.key
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
