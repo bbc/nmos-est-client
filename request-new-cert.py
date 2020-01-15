@@ -42,7 +42,8 @@ class NmosEst(object):
         """
         cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
 
-        if not self.isCertDateValid(cert):
+        if cert.has_expired():
+            print('Certificate has expired')
             return False
 
         return True
@@ -84,6 +85,14 @@ class NmosEst(object):
         return cert_is_valid
 
     def inspectCert(self, cert_data):
+        """Print information about the certificate
+
+        Args:
+            cert_data: String of certificate data
+
+        Returns:
+            None
+        """
 
         cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
 
@@ -94,36 +103,39 @@ class NmosEst(object):
         expiry_date = self.convertAsn1DateToString(expiry_date)
 
         print(f'Expiry Date: {expiry_date}')
+        print(f'Verison Number: {cert.get_version()}')
         print('Extensions:')
         for i in range(cert.get_extension_count()):
             print(f'   {cert.get_extension(i)}')
 
-    def isCertDateValid(self, cert_object):
-        asn1_date = cert_object.get_notAfter()
-        expiry_date = self.convertAsn1DateToString(asn1_date)
-        date_now = dt.now()
-
-        if date_now > expiry_date:
-            print(f'Certificate has expired, expiry date: {expiry_date}')
-            return False
-        return True
-
-    def convertAsn1DateToString(self, ans1_date):
-        if isinstance(ans1_date, bytes):
+    def convertAsn1DateToString(self, asn1_date):
+        """Convert ASN.1 formated date (YYYYMMDDhhmmssZ) to datatime object"""
+        if isinstance(asn1_date, bytes):
             # Convert bytes to string
-            ans1_date = ans1_date.decode('ascii')
+            asn1_date = asn1_date.decode('ascii')
 
         # Strip tailing Z from string
-        if ans1_date[-1:] == 'Z':
-            ans1_date = ans1_date[:-1]
+        if asn1_date[-1:] == 'Z':
+            asn1_date = asn1_date[:-1]
 
         # Covert to date object
-        date = dt.strptime(ans1_date, '%Y%m%d%H%M%S')
+        date = dt.strptime(asn1_date, '%Y%m%d%H%M%S')
 
         return date
 
-    def _createCsr(self, common_name, cipher_suite='rsa_2048'):
-        # Create CSR and get private key used to sign the CSR.
+    def _createCsr(self, common_name, subject_alt_name=None, cipher_suite='rsa_2048'):
+        """Create CSR and private key
+
+        Args:
+            common_name: Common name to be included in the certificate
+
+            subject_alt_name: Subject alternative name to be included in the certificate
+
+            cipher_suite: Cipher suite to be used to sign the CSR. rsa_2048 and ecdsa supported
+
+        Returns:
+            private_key, csr
+        """
         country = 'GB'
         city = 'Manchester'
         organization = 'AMWA'
@@ -135,12 +147,13 @@ class NmosEst(object):
                                                      organization=organization,
                                                      organizational_unit=organizational_unit,
                                                      email_address=email_address,
-                                                     cipher_suite=cipher_suite)
+                                                     cipher_suite=cipher_suite,
+                                                     subject_alt_name=subject_alt_name)
 
         return private_key, csr
 
     def getCaCert(self, newPath):
-        # Get CA Cert, but do not verify the authenticity of the EST server
+        """Get CA Cert, but do not verify the authenticity of the EST server"""
         try:
             ca_cert = self.estClient.cacerts()
         except est_errors.RequestError as e:
@@ -197,6 +210,7 @@ class NmosEst(object):
         self._writeDataToFile(cert_response, newPath)
 
     def _request_cert(self, method, *args):
+        """Perform request and handle errors"""
         success = False
         for x in range(NUM_TRY_LATER_ATTEMPTS):
             try:
@@ -216,6 +230,7 @@ class NmosEst(object):
         return returned_cert
 
     def _writeDataToFile(self, data, path, private=False):
+        """Write data to file path"""
         if not isinstance(data, str) and not isinstance(data, bytes):
             print(f"Cert data is not a string or bytes, file: {path}")
             return False
@@ -232,6 +247,15 @@ class NmosEst(object):
 
 
 if __name__ == "__main__":
+
+    """
+    Example workflow of NMOS EST class
+    1. Discover EST server (config file or DNS-SD)
+    2. Request root CA
+    3. Request RSA cert using external client cert
+    4. Request ECDSA cert using external client cert
+    4. Renew both certs
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default='bbc-0.workshop.nmos.tv')
@@ -263,12 +287,3 @@ if __name__ == "__main__":
     nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'est.{client_cert_path}')
 
     nmos_est_client.renewCert(f'est1.{client_cert_path}')
-
-    """
-    Example workflow of EST class
-    1. Discover EST server (config file or DNS-SD)
-    2. Request root CA
-    3. Request RSA cert using external client cert
-    4. Request ECDSA cert using external client cert
-    4. Renew both certs
-    """
