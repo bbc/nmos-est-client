@@ -152,21 +152,23 @@ class NmosEst(object):
 
         return private_key, csr
 
-    def getCaCert(self, newPath):
+    def getCaCert(self, newCaPath):
         """Get CA Cert, but do not verify the authenticity of the EST server"""
         try:
             ca_cert = self.estClient.cacerts()
         except est_errors.RequestError as e:
             print("Failed to get Root CA from EST Server")
             print(e)
-            return
+            return False
 
-        self._writeDataToFile(ca_cert, newPath)
+        self._writeDataToFile(ca_cert, newCaPath)
 
         # Use latest Root CA for future requests
-        self.estClient.implicit_trust_anchor_cert_path = newPath
+        self.estClient.implicit_trust_anchor_cert_path = newCaPath
 
-    def getNewCert(self, hostname, newPath):
+        return True
+
+    def getNewCert(self, hostname, newCertPath, newKeyPath):
         """
         Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server
         """
@@ -183,13 +185,17 @@ class NmosEst(object):
             print('Failed to request new TLS certificate')
             return False
 
-        self._writeDataToFile(private_key, f'est.{self.ext_client_key_path}')
-        self._writeDataToFile(cert_response, newPath)
+        self._writeDataToFile(private_key, newKeyPath)
+        self._writeDataToFile(cert_response, newCertPath)
+
+        # Update certificate and key path
+        self.server_key_path = newKeyPath
+        self.server_cert_path = newCertPath
 
         self.inspectCert(cert_response)
         self.verifyNmosCert(cert_response)
 
-    def renewCert(self, newPath):
+    def renewCert(self, hostname, newCertPath, newKeyPath):
         """
         Renew existing TLS certificate, using current certificate for authentication with EST server
         """
@@ -197,17 +203,24 @@ class NmosEst(object):
         # Get CSR attributes from EST server as an OrderedDict.
         # csr_attrs = self.estClient.csrattrs()
 
-        private_key, csr = self._createCsr('testProduct')
+        private_key, csr = self._createCsr(hostname)
 
-        cert = (f'est.{self.ext_client_cert_path}', f'est.{self.ext_client_key_path}')
+        cert = (self.server_cert_path, self.server_key_path)
 
         cert_response = self._request_cert(self.estClient.simplereenroll, csr, cert)
         if not cert_response:
             print('Failed to request new TLS certificate')
             return False
 
-        self._writeDataToFile(private_key, f'est1.{self.ext_client_key_path}')
-        self._writeDataToFile(cert_response, newPath)
+        # Update certificate and key path
+        self.server_key_path = newKeyPath
+        self.server_cert_path = newCertPath
+
+        self._writeDataToFile(private_key, newKeyPath)
+        self._writeDataToFile(cert_response, newCertPath)
+
+        self.inspectCert(cert_response)
+        self.verifyNmosCert(cert_response)
 
     def _request_cert(self, method, *args):
         """Perform request and handle errors"""
@@ -269,7 +282,6 @@ if __name__ == "__main__":
     host = args.ip
     port = args.port
 
-    # Root CA used to sign the EST servers Server certificate
     ca_cert_path = args.cacert
     client_cert_path = args.cert
     client_key_path = args.key
@@ -284,6 +296,8 @@ if __name__ == "__main__":
     # Get latest EST server CA certs.
     ca_certs = nmos_est_client.getCaCert(ca_cert_path)
 
-    nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'est.{client_cert_path}')
+    # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
+    nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'1.{client_cert_path}', f'1.{client_key_path}')
 
-    nmos_est_client.renewCert(f'est1.{client_cert_path}')
+    # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
+    nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}')
