@@ -198,7 +198,7 @@ class NmosEst(object):
         # Get CSR attributes from EST server as an OrderedDict.
         # csr_attrs = self.estClient.csrattrs()
 
-        private_key, csr = self._createCsr(hostname)
+        private_key, csr = self._createCsr(hostname, b'DNS:test.me', cipher_suite=cipher_suite)
 
         ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
 
