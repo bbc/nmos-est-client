@@ -108,6 +108,24 @@ class NmosEst(object):
         for i in range(cert.get_extension_count()):
             print(f'   {cert.get_extension(i)}')
 
+    def inspectCsr(self, csr_data):
+        """Print information about the Certificate Signing Request PKCS10
+
+        Args:
+            csr_data: String of CSR data
+
+        Returns:
+            None
+        """
+        csr = openssl.load_certificate_request(openssl.FILETYPE_PEM, csr_data)
+
+        print(f'Cert Subject: {csr.get_subject()}')
+
+        print(f'Version Number: {csr.get_version()}')
+        print('Extensions:')
+        for ext in csr.get_extensions():
+            print(f'   {ext.get_short_name()}')
+
     def convertAsn1DateToString(self, asn1_date):
         """Convert ASN.1 formated date (YYYYMMDDhhmmssZ) to datatime object"""
         if isinstance(asn1_date, bytes):
@@ -150,6 +168,10 @@ class NmosEst(object):
                                                      cipher_suite=cipher_suite,
                                                      subject_alt_name=subject_alt_name)
 
+
+        print(f'\n\n{csr}\n\n\n')
+        self.inspectCsr(csr)
+
         return private_key, csr
 
     def getCaCert(self, newCaPath):
@@ -168,7 +190,7 @@ class NmosEst(object):
 
         return True
 
-    def getNewCert(self, hostname, newCertPath, newKeyPath):
+    def getNewCert(self, hostname, newCertPath, newKeyPath, cipher_suite='rsa_2048'):
         """
         Get a new TLS certificate from EST, using externally issued certificate for authentication with EST server
         """
@@ -195,7 +217,9 @@ class NmosEst(object):
         self.inspectCert(cert_response)
         self.verifyNmosCert(cert_response)
 
-    def renewCert(self, hostname, newCertPath, newKeyPath):
+        return True
+
+    def renewCert(self, hostname, newCertPath, newKeyPath, cipher_suite='rsa_2048'):
         """
         Renew existing TLS certificate, using current certificate for authentication with EST server
         """
@@ -203,13 +227,13 @@ class NmosEst(object):
         # Get CSR attributes from EST server as an OrderedDict.
         # csr_attrs = self.estClient.csrattrs()
 
-        private_key, csr = self._createCsr(hostname)
+        private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
         cert = (self.server_cert_path, self.server_key_path)
 
         cert_response = self._request_cert(self.estClient.simplereenroll, csr, cert)
         if not cert_response:
-            print('Failed to request new TLS certificate')
+            print('Failed to renew TLS certificate')
             return False
 
         # Update certificate and key path
@@ -221,6 +245,8 @@ class NmosEst(object):
 
         self.inspectCert(cert_response)
         self.verifyNmosCert(cert_response)
+
+        return True
 
     def _request_cert(self, method, *args):
         """Perform request and handle errors"""
@@ -294,10 +320,17 @@ if __name__ == "__main__":
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
     # Get latest EST server CA certs.
-    ca_certs = nmos_est_client.getCaCert(ca_cert_path)
+
+    if not nmos_est_client.getCaCert(ca_cert_path):
+        print('Exiting...')
+        exit(1)
 
     # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
-    nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'1.{client_cert_path}', f'1.{client_key_path}')
+    if not nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'1.{client_cert_path}', f'1.{client_key_path}'):
+        print('Exiting...')
+        exit(1)
 
     # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
-    nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}')
+    if not nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}'):
+        print('Exiting...')
+        exit(1)
