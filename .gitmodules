@@ -1,3 +1,4 @@
 [submodule "estClient"]
 	path = estClient
 	url = git@github.com:bbc/rd-apmm-est-client-python.git
+	branch = master

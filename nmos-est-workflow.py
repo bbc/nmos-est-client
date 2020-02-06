@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from NmosEst.nmosest import NmosEst
+from nmosEstClient.nmosest import NmosEst
 
 if __name__ == "__main__":
 
