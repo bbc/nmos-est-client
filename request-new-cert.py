@@ -8,7 +8,7 @@ import est_client_python.est.errors as est_errors
 import est_client_python.est.client as est_client
 import OpenSSL.crypto as openssl
 
-NUM_TRY_LATER_ATTEMPTS = 3  # Number of times request should be resent on HTTP 202-Try Later
+NUM_TRY_LATER_ATTEMPTS = 2  # Number of times request should be resent on HTTP 202-Try Later
 
 
 class NmosEst(object):
@@ -69,11 +69,14 @@ class NmosEst(object):
 
         for i in range(cert.get_extension_count()):
             if cert.get_extension(i).get_short_name() == b'extendedKeyUsage':
-                if str(cert.get_extension(i)) == 'TLS Web Server Authentication, TLS Web Client Authentication':
-                    test_results['extended_key_usage'] = True
-                else:
-                    print(f'Certificate does not support Extended Key usage for both Web Server and Web Clients: \
-                          {cert.get_extension(i)}')
+                print(f'Certificate Extended Key usage:\n \
+                      {cert.get_extension(i)}')
+                test_results['extended_key_usage'] = True
+                # if str(cert.get_extension(i)) == 'TLS Web Server Authentication, TLS Web Client Authentication':
+                #     test_results['extended_key_usage'] = True
+                # else:
+                #     print(f'Certificate does not support Extended Key usage for both Web Server and Web Clients: \
+                #           {cert.get_extension(i)}')
 
         cert_is_valid = True
         for test in test_results:
@@ -124,13 +127,13 @@ class NmosEst(object):
         print(f'Version Number: {csr.get_version()}')
         print('Extensions:')
         for ext in csr.get_extensions():
-            print(f'   {ext.get_short_name()}')
+            print(f'   {ext.get_short_name()}: {ext}')
 
     def convertAsn1DateToString(self, asn1_date):
         """Convert ASN.1 formated date (YYYYMMDDhhmmssZ) to datatime object"""
         if isinstance(asn1_date, bytes):
             # Convert bytes to string
-            asn1_date = asn1_date.decode('ascii')
+            asn1_date = asn1_date.decode('utf-8')
 
         # Strip tailing Z from string
         if asn1_date[-1:] == 'Z':
@@ -148,6 +151,7 @@ class NmosEst(object):
             common_name: Common name to be included in the certificate
 
             subject_alt_name: Subject alternative name to be included in the certificate
+                eg. b'DNS:test.com'
 
             cipher_suite: Cipher suite to be used to sign the CSR. rsa_2048 and ecdsa supported
 
@@ -168,11 +172,16 @@ class NmosEst(object):
                                                      cipher_suite=cipher_suite,
                                                      subject_alt_name=subject_alt_name)
 
+        # Add OID extension for certificate profile
+        # profile_ext = openssl.X509Extension(b'1.3.6.1.4.1.311.20.2', False, b'pc-client')
+        # csr.add_extensions([profile_ext])
 
-        print(f'\n\n{csr}\n\n\n')
         self.inspectCsr(csr)
 
         return private_key, csr
+
+    def setImplictTrustAnchor(self, path):
+        self.estClient.implicit_trust_anchor_cert_path = path
 
     def getCaCert(self, newCaPath):
         """Get CA Cert, but do not verify the authenticity of the EST server"""
@@ -186,7 +195,7 @@ class NmosEst(object):
         self._writeDataToFile(ca_cert, newCaPath)
 
         # Use latest Root CA for future requests
-        self.estClient.implicit_trust_anchor_cert_path = newCaPath
+        self.setImplictTrustAnchor(newCaPath)
 
         return True
 
@@ -198,9 +207,11 @@ class NmosEst(object):
         # Get CSR attributes from EST server as an OrderedDict.
         # csr_attrs = self.estClient.csrattrs()
 
-        private_key, csr = self._createCsr(hostname, b'DNS:test.me', cipher_suite=cipher_suite)
+        private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
         ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
+
+        #cert_response = self._request_cert(self.estClient.simpleenroll, csr)
 
         cert_response = self._request_cert(self.estClient.simpleenroll, csr, ext_cert)
         if not cert_response:
@@ -276,7 +287,7 @@ class NmosEst(object):
 
         if isinstance(data, bytes):
             # Convert bytes to string
-            data = data.decode('ascii')
+            data = data.decode('utf-8')
 
         with open(path, 'w') as f:
             f.write(data)
@@ -319,18 +330,22 @@ if __name__ == "__main__":
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
-    # Get latest EST server CA certs.
 
+    # Get latest EST server CA certs.
     if not nmos_est_client.getCaCert(ca_cert_path):
         print('Exiting...')
         exit(1)
 
     # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
-    if not nmos_est_client.getNewCert('product1.workshop.nmos.tv', f'1.{client_cert_path}', f'1.{client_key_path}'):
+    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', f'rsa.test.pem.crt', f'rsa.test.pem.key', cipher_suite='rsa_2048'):
         print('Exiting...')
         exit(1)
 
-    # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
-    if not nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}'):
+    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', f'ecdsa.test.pem.crt', f'ecdsa.test.pem.key', cipher_suite='ecdsa'):
         print('Exiting...')
         exit(1)
+
+    # # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
+    # if not nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}'):
+    #     print('Exiting...')
+    #     exit(1)

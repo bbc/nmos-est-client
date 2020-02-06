@@ -1,7 +1,7 @@
 
 # Enrolment over Secure Transport (EST)
 
-EST is a protocol for requesting X.509 certificates over HTTPS, the EST client is the device requesting the certificate and the EST server listens for certificate requests at a well known path. 
+EST is a protocol for requesting X.509 certificates over HTTPS, the EST client is the device requesting the certificate and the EST server listens for certificate requests at a well known path.
 
 https://tools.ietf.org/html/rfc7030
 
@@ -19,9 +19,17 @@ Getting Started
 
 1. Clone python EST client library
 ```
+cd clone git@github.com:bbc/rd-apmm-nmos-est.git
+cd rd-apmm-nmos-est.git
 git clone git@github.com:bbc/rd-apmm-est-client-python.git est_client_python
 ```
-2. 
+2. Install dependencies
+```
+pip3 install -r requirements.txt
+```
+
+
+
 In order to check the compliance of a EST Servers configuration an automated test script has been written.
 
 Tests
