@@ -23,9 +23,23 @@ cd clone git@github.com:bbc/rd-apmm-nmos-est.git
 cd rd-apmm-nmos-est.git
 git clone git@github.com:bbc/rd-apmm-est-client-python.git est_client_python
 ```
+2. Enable python virtual env
+```
+
+```
 2. Install dependencies
 ```
 pip3 install -r requirements.txt
+```
+
+Run script
+```
+python3 request-new-cert.py
+```
+
+Deactivate virtual env
+```
+deactivate
 ```
 
 
