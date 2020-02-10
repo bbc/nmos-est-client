@@ -309,10 +309,10 @@ if __name__ == "__main__":
     client_cert_path = args.cert
     client_key_path = args.key
 
-    print(f'Using EST Server {host}:{port}')
-    print(f'Root CA: {ca_cert_path}')
-    print(f'External Certificate: {client_cert_path}')
-    print(f'External Private Key: {client_key_path}')
+    print('Using EST Server {}:{}'.format(host, port))
+    print('Root CA: {}'.format(ca_cert_path))
+    print('External Certificate: {}'.format(client_cert_path))
+    print('External Private Key: {}'.format(client_key_path))
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
