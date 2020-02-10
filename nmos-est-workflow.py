@@ -15,7 +15,7 @@ if __name__ == "__main__":
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", default='bbc-0.workshop.nmos.tv')
+    parser.add_argument("--ip", default='bbc-1.workshop.nmos.tv')
     parser.add_argument("--port", type=int, default=8443)
     parser.add_argument("--cacert", default='cacert.pem')
     parser.add_argument("--cert", default='certs/man1.ecdsa.product1.cert.chain.pem')
@@ -42,16 +42,16 @@ if __name__ == "__main__":
         print('Exiting...')
         exit(1)
 
-    # # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
-    # if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'rsa.test.pem.crt', 'rsa.test.pem.key',
-    #                                   cipher_suite='rsa_2048'):
-    #     print('Exiting...')
-    #     exit(1)
+    # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
+    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'rsa.test.pem.crt', 'rsa.test.pem.key',
+                                      cipher_suite='rsa_2048'):
+        print('Exiting...')
+        exit(1)
 
-    # if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
-    #                                   cipher_suite='ecdsa'):
-    #     print('Exiting...')
-    #     exit(1)
+    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
+                                      cipher_suite='ecdsa'):
+        print('Exiting...')
+        exit(1)
 
     # Update client certificate in use
     nmos_est_client.ext_client_cert_path = 'rsa.test.pem.crt'

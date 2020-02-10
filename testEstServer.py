@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from nmosEstClient.nmosest import NmosEst
 
 
 class TestNmosEstServer(object):
@@ -19,8 +20,6 @@ class TestNmosEstServer(object):
 
         # Generate invalid externally trusted CA and client certificate
 
-
-
     def run_all_tests(self):
         self.test_getCa()
         self.test_getCert()
@@ -30,9 +29,11 @@ class TestNmosEstServer(object):
         self.test_getCert_with_invaild_ext_cert()
         self.test_getCert_with_invaild_cipher_suite()
 
-
     def test_getCa(self):
         """Test that a valid Root CA in the pem format is returned when requested"""
+        nmos_est_client = NmosEst(self.host, self.port, None, None, None)
+
+        nmos_est_client.getCaCert('ca.pem')
 
     def test_getCert(self):
         """
@@ -65,13 +66,10 @@ class TestNmosEstServer(object):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", default='ap-nuc-0.rd.bbc.co.uk')
-    parser.add_argument("--port", type=int, default=8085)
-    parser.add_argument("--cacert", default='cacert.pem')
-    parser.add_argument("--cert", default='manufacturer1.ecdsa.product1.cert.chain.pem')
-    parser.add_argument("--key", default='manufacturer1.ecdsa.product1.key.pem')
+    parser.add_argument("--ip", default='bbc-1.workshop.nmos.tv')
+    parser.add_argument("--port", type=int, default=8443)
     args = parser.parse_args()
 
-    testEst = TestNmosEstServer()
+    testEst = TestNmosEstServer(args.ip, args.port)
 
-
+    testEst.run_all_tests()

@@ -35,7 +35,7 @@ pip3 install -r requirements.txt
 
 Run script
 ```
-python3 nmos-est-workflow.py
+python3 nmos-est-workflow.py --ip localhost --port 8443
 ```
 
 Deactivate virtual env
@@ -43,8 +43,8 @@ Deactivate virtual env
 deactivate
 ```
 
-Tests
-=====
+Tests (Work in Progress)
+========================
 
 In order to check the compliance of a EST Servers configuration an automated test script has been written.
 
@@ -64,8 +64,11 @@ The EST Server is test under incorrect operation for:
     * When the EST client presents a rogue manufacturer's signed client certificate
 * The EST server does not issue a TLS certificate if a non permitted cipher suite is requested
 
-Running Tests
-=============
+#### Running Tests
+
+```
+python3 testEstServer.py --ip localhost --port 8443
+```
 
 
 Updating submodule
