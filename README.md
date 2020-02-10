@@ -21,7 +21,7 @@ Getting Started
 
 1. Clone python EST client library
 ```
-cd clone git@github.com:bbc/rd-apmm-nmos-est.git -recursive
+git clone git@github.com:bbc/rd-apmm-nmos-est.git --recursive
 ```
 2. Enable python virtual env
 ```

@@ -30,10 +30,10 @@ if __name__ == "__main__":
     client_cert_path = args.cert
     client_key_path = args.key
 
-    print(f'Using EST Server {host}:{port}')
-    print(f'Root CA: {ca_cert_path}')
-    print(f'External Certificate: {client_cert_path}')
-    print(f'External Private Key: {client_key_path}')
+    print('Using EST Server {}:{}'.format(host, port))
+    print('Root CA: {}'.format(ca_cert_path))
+    print('External Certificate: {}'.format(client_cert_path))
+    print('External Private Key: {}'.format(client_key_path))
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
@@ -42,18 +42,22 @@ if __name__ == "__main__":
         print('Exiting...')
         exit(1)
 
-    # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
-    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', f'rsa.test.pem.crt', f'rsa.test.pem.key',
-                                      cipher_suite='rsa_2048'):
-        print('Exiting...')
-        exit(1)
-
-    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', f'ecdsa.test.pem.crt', f'ecdsa.test.pem.key',
-                                      cipher_suite='ecdsa'):
-        print('Exiting...')
-        exit(1)
-
-    # # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
-    # if not nmos_est_client.renewCert('product1.workshop.nmos.tv', f'2.{client_cert_path}', f'2.{client_key_path}'):
+    # # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
+    # if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'rsa.test.pem.crt', 'rsa.test.pem.key',
+    #                                   cipher_suite='rsa_2048'):
     #     print('Exiting...')
     #     exit(1)
+
+    # if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
+    #                                   cipher_suite='ecdsa'):
+    #     print('Exiting...')
+    #     exit(1)
+
+    # Update client certificate in use
+    nmos_est_client.ext_client_cert_path = 'rsa.test.pem.crt'
+    nmos_est_client.ext_client_key_path = 'rsa.test.pem.key'
+
+    # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
+    if not nmos_est_client.renewCert('camera-1.workshop.nmos.tv', 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
+        print('Exiting...')
+        exit(1)

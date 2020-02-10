@@ -15,9 +15,7 @@ class NmosEst(object):
     def __init__(self, host, port,
                  cacert_path,
                  ext_client_cert_path,
-                 ext_client_key_path,
-                 server_cert_path=None,
-                 server_key_path=None):
+                 ext_client_key_path):
         """
         Class used to provision an NMOS Node with the Root CA and TLS Server certificate, can also be used
         to renew both when expiring.
@@ -28,8 +26,6 @@ class NmosEst(object):
         self.cacert_path = cacert_path
         self.ext_client_cert_path = ext_client_cert_path
         self.ext_client_key_path = ext_client_key_path
-        self.server_cert_path = server_cert_path
-        self.server_key_path = server_key_path
 
     def isCertValid(self, cert_data):
         """Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
@@ -69,8 +65,8 @@ class NmosEst(object):
 
         for i in range(cert.get_extension_count()):
             if cert.get_extension(i).get_short_name() == b'extendedKeyUsage':
-                print(f'Certificate Extended Key usage:\n \
-                      {cert.get_extension(i)}')
+                print('Certificate Extended Key usage:\n \
+                      {}'.format(cert.get_extension(i)))
                 test_results['extended_key_usage'] = True
                 # if str(cert.get_extension(i)) == 'TLS Web Server Authentication, TLS Web Client Authentication':
                 #     test_results['extended_key_usage'] = True
@@ -81,7 +77,7 @@ class NmosEst(object):
         cert_is_valid = True
         for test in test_results:
             result = ('Passed' if test_results[test] else 'Failed')
-            print(f'Test {test}: {result}')
+            print('Test {}: {}'.format(test, result))
             if not test_results[test]:
                 cert_is_valid = False
 
@@ -99,17 +95,17 @@ class NmosEst(object):
 
         cert = openssl.load_certificate(openssl.FILETYPE_PEM, cert_data)
 
-        print(f'CA Issuer: {cert.get_issuer().get_components()[0][1]}')
-        print(f'Cert Subject: {cert.get_subject()}')
+        print('CA Issuer: {}'.format(cert.get_issuer().get_components()[0][1]))
+        print('Cert Subject: {}'.format(cert.get_subject()))
 
         expiry_date = cert.get_notAfter()
         expiry_date = self.convertAsn1DateToString(expiry_date)
 
-        print(f'Expiry Date: {expiry_date}')
-        print(f'Verison Number: {cert.get_version()}')
+        print('Expiry Date: {}'.format(expiry_date))
+        print('Verison Number: {}'.format(cert.get_version()))
         print('Extensions:')
         for i in range(cert.get_extension_count()):
-            print(f'   {cert.get_extension(i)}')
+            print('   {}'.format(cert.get_extension(i)))
 
     def inspectCsr(self, csr_data):
         """Print information about the Certificate Signing Request PKCS10
@@ -122,12 +118,12 @@ class NmosEst(object):
         """
         csr = openssl.load_certificate_request(openssl.FILETYPE_PEM, csr_data)
 
-        print(f'Cert Subject: {csr.get_subject()}')
+        print('Cert Subject: {}'.format(csr.get_subject()))
 
-        print(f'Version Number: {csr.get_version()}')
+        print('Version Number: {}'.format(csr.get_version()))
         print('Extensions:')
         for ext in csr.get_extensions():
-            print(f'   {ext.get_short_name()}: {ext}')
+            print('   {}: {}'.format(ext.get_short_name(), ext))
 
     def convertAsn1DateToString(self, asn1_date):
         """Convert ASN.1 formated date (YYYYMMDDhhmmssZ) to datatime object"""
@@ -209,19 +205,15 @@ class NmosEst(object):
 
         private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
-        ext_cert = (self.ext_client_cert_path, self.ext_client_key_path)
+        client_cert = (self.ext_client_cert_path, self.ext_client_key_path)
 
-        cert_response = self._request_cert(self.estClient.simpleenroll, csr, ext_cert)
+        cert_response = self._request_cert(self.estClient.simpleenroll, csr, client_cert)
         if not cert_response:
             print('Failed to request new TLS certificate')
             return False
 
         self._writeDataToFile(private_key, newKeyPath)
         self._writeDataToFile(cert_response, newCertPath)
-
-        # Update certificate and key path
-        self.server_key_path = newKeyPath
-        self.server_cert_path = newCertPath
 
         self.inspectCert(cert_response)
         self.verifyNmosCert(cert_response)
@@ -238,16 +230,12 @@ class NmosEst(object):
 
         private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
-        cert = (self.server_cert_path, self.server_key_path)
+        client_cert = (self.ext_client_cert_path, self.ext_client_key_path)
 
-        cert_response = self._request_cert(self.estClient.simplereenroll, csr, cert)
+        cert_response = self._request_cert(self.estClient.simplereenroll, csr, client_cert)
         if not cert_response:
             print('Failed to renew TLS certificate')
             return False
-
-        # Update certificate and key path
-        self.server_key_path = newKeyPath
-        self.server_cert_path = newCertPath
 
         self._writeDataToFile(private_key, newKeyPath)
         self._writeDataToFile(cert_response, newCertPath)
@@ -266,7 +254,7 @@ class NmosEst(object):
                 success = True
                 break
             except est_errors.TryLater as e:
-                print(f'Try request certificate again in {e.seconds} seconds')
+                print('Try request certificate again in {} seconds'.format(e.seconds))
                 sleep(e.seconds)
             except est_errors.RequestError as e:
                 print("Failed to get TLS Certificate from EST Server")
