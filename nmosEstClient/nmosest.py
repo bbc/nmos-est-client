@@ -268,7 +268,7 @@ class NmosEst(object):
     def _writeDataToFile(self, data, path, private=False):
         """Write data to file path"""
         if not isinstance(data, str) and not isinstance(data, bytes):
-            print(f"Cert data is not a string or bytes, file: {path}")
+            print('Cert data is not a string or bytes, file: {}'.format(path))
             return False
 
         if isinstance(data, bytes):
