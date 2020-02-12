@@ -28,8 +28,8 @@ NUM_TRY_LATER_ATTEMPTS = 2  # Number of times request should be resent on HTTP 2
 class NmosEst(object):
     def __init__(self, host, port,
                  cacert_path,
-                 ext_client_cert_path,
-                 ext_client_key_path):
+                 client_cert_path,
+                 client_key_path):
         """
         Class used to provision an NMOS Node with the Root CA and TLS Server certificate, can also be used
         to renew both when expiring.
@@ -38,8 +38,8 @@ class NmosEst(object):
         """
         self.estClient = est_client.Client(host, port, implicit_trust_anchor_cert_path=False)
         self.cacert_path = cacert_path
-        self.ext_client_cert_path = ext_client_cert_path
-        self.ext_client_key_path = ext_client_key_path
+        self.client_cert_path = client_cert_path
+        self.client_key_path = client_key_path
 
     def isCertValid(self, cert_data):
         """Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
@@ -116,7 +116,7 @@ class NmosEst(object):
         expiry_date = self.convertAsn1DateToString(expiry_date)
 
         print('Expiry Date: {}'.format(expiry_date))
-        print('Verison Number: {}'.format(cert.get_version()))
+        print('Version Number: {}'.format(cert.get_version()))
         print('Extensions:')
         for i in range(cert.get_extension_count()):
             print('   {}'.format(cert.get_extension(i)))
@@ -219,7 +219,7 @@ class NmosEst(object):
 
         private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
-        client_cert = (self.ext_client_cert_path, self.ext_client_key_path)
+        client_cert = (self.client_cert_path, self.client_key_path)
 
         cert_response = self._request_cert(self.estClient.simpleenroll, csr, client_cert)
         if not cert_response:
@@ -244,7 +244,7 @@ class NmosEst(object):
 
         private_key, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
 
-        client_cert = (self.ext_client_cert_path, self.ext_client_key_path)
+        client_cert = (self.client_cert_path, self.client_key_path)
 
         cert_response = self._request_cert(self.estClient.simplereenroll, csr, client_cert)
         if not cert_response:

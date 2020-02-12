@@ -68,8 +68,8 @@ if __name__ == "__main__":
         exit(1)
 
     # Update client certificate in use
-    nmos_est_client.ext_client_cert_path = 'rsa.test.pem.crt'
-    nmos_est_client.ext_client_key_path = 'rsa.test.pem.key'
+    nmos_est_client.client_cert_path = 'rsa.test.pem.crt'
+    nmos_est_client.client_key_path = 'rsa.test.pem.key'
 
     # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
     if not nmos_est_client.renewCert('camera-1.workshop.nmos.tv', 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
