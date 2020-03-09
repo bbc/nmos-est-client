@@ -66,10 +66,18 @@ The EST Server is test under incorrect operation for:
 
 #### Running Tests
 
+In order to test the EST Server, configuration of both the EST Server and NMOS EST Client is required.
+
+In the `certs/` folder the following certificates need to be added:
+- `cacert.pem` - The Root CA and chain of trust expected to be returned by the `/cacerts` endpoint
+- `valid-manufacturer-cert.pem` - A manufacturer issued certificate that is trusted by the EST Server
+- `valid-manufacturer-cert.key` - A manufacturer issued key for the certificate that is trusted by the EST Server
+- `invalid-manufacturer-cert.pem` - A manufacturer issued certificate that is **NOT** trusted by the EST Server
+- `invalid-manufacturer-cert.key` - A manufacturer issued key for the certificate that is **NOT** trusted by the EST Server
+
 ```
 python3 testEstServer.py --ip localhost --port 8443
 ```
-
 
 Updating submodule
 ==================
@@ -85,8 +93,6 @@ See [CHANGELOG.md](CHANGELOG.md)
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-Please ensure you have run the test suite before submitting a Pull Request, and include a version bump in line with our [Versioning](#versioning) policy.
 
 ## License
 
