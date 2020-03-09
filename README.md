@@ -12,7 +12,7 @@ Contents
 
 * [estClient](estClient) - EST Client Python library for requesting certificates using the EST endpoint
     * This a modified version of this library, with support for ECDSA key profiles added
-* [nmosEstClient](nmosEstClient) - NMOS EST Client Python library, that abstract the required NMOS specific functinality of EST defined in https://github.com/AMWA-TV/nmos-api-security
+* [nmosEstClient](nmosEstClient) - NMOS EST Client Python library, that abstracts the required NMOS specific functionality of EST defined in https://github.com/AMWA-TV/nmos-api-security
 * [nmos-est-workflow.py](nmos-est-workflow.py) - Example of NMOS workflow, for getting Root CA, TLS Server Certificate and Renewing the Certificate
 
 
@@ -77,3 +77,17 @@ Updating submodule
 ```
 git submodule update --remote
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+Please ensure you have run the test suite before submitting a Pull Request, and include a version bump in line with our [Versioning](#versioning) policy.
+
+## License
+
+See [LICENSE.md](LICENSE.md)

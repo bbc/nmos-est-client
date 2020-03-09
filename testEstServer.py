@@ -19,7 +19,7 @@ from nmosEstClient.nmosest import NmosEst
 
 
 class TestNmosEstServer(object):
-    """Class to test the operation of an EST server, in compliance with a the NMOS specifictions"""
+    """Class to test the operation of an EST server, in compliance with a the NMOS specifications"""
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -40,8 +40,8 @@ class TestNmosEstServer(object):
         self.test_renewCert()
         self.test_getCert_with_no_auth()
         self.test_getCert_with_basis_auth()
-        self.test_getCert_with_invaild_ext_cert()
-        self.test_getCert_with_invaild_cipher_suite()
+        self.test_getCert_with_invalid_ext_cert()
+        self.test_getCert_with_invalid_cipher_suite()
 
     def test_getCa(self):
         """Test that a valid Root CA in the pem format is returned when requested"""
@@ -70,10 +70,10 @@ class TestNmosEstServer(object):
     def test_getCert_with_basis_auth(self):
         """Test that the request is rejected when HTTP basic auth is provided"""
 
-    def test_getCert_with_invaild_ext_cert(self):
+    def test_getCert_with_invalid_ext_cert(self):
         """Test that the request is rejected when invalid external certificate is used"""
 
-    def test_getCert_with_invaild_cipher_suite(self):
+    def test_getCert_with_invalid_cipher_suite(self):
         """Test that the request is rejected when invalid external certificate is used"""
 
 
