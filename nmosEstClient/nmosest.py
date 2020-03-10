@@ -40,6 +40,7 @@ class NmosEst(object):
         self.cacert_path = cacert_path
         self.client_cert_path = client_cert_path
         self.client_key_path = client_key_path
+        self.try_later_attempts = NUM_TRY_LATER_ATTEMPTS
 
     def isCertValid(self, cert_data):
         """Check that the TLS certificate is valid, by checking the expiry date and domain for server certificate
@@ -226,6 +227,10 @@ class NmosEst(object):
             print('Failed to request new TLS certificate')
             return False
 
+        # Append Chain of trust
+        with open(self.cacert_path) as f:
+            cert_response += f.read()
+
         self._writeDataToFile(private_key, newKeyPath)
         self._writeDataToFile(cert_response, newCertPath)
 
@@ -262,7 +267,7 @@ class NmosEst(object):
     def _request_cert(self, method, *args):
         """Perform request and handle errors"""
         success = False
-        for x in range(NUM_TRY_LATER_ATTEMPTS):
+        for x in range(self.try_later_attempts):
             try:
                 returned_cert = method(*args)
                 success = True
