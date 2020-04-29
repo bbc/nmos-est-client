@@ -193,6 +193,7 @@ class NmosEst(object):
 
     def setImplictTrustAnchor(self, path):
         self.estClient.implicit_trust_anchor_cert_path = path
+        self.cacert_path = path
 
     def getCaCert(self, newCaPath):
         """Get CA Cert, but do not verify the authenticity of the EST server"""
@@ -225,6 +226,7 @@ class NmosEst(object):
         cert_response = self._request_cert(self.estClient.simpleenroll, csr, client_cert)
         if not cert_response:
             print('Failed to request new TLS certificate')
+            print('for host: {} with cipher suite: {}'.format(hostname, cipher_suite))
             return False
 
         # Append Chain of trust
