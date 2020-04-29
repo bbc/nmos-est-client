@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import argparse
-from nmosEstClient.nmosest import NmosEst
+from nmosEstClient.nmosest import NmosEst, bcolors
 
 if __name__ == "__main__":
 
@@ -51,17 +51,24 @@ if __name__ == "__main__":
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
+
+    print('\n')
+    print(bcolors.OKBLUE + 'Get Root CA' + bcolors.ENDC)
     # Get latest EST server CA certs.
     if not nmos_est_client.getCaCert(ca_cert_path):
         print('Exiting...')
         exit(1)
 
+    print('\n')
+    print(bcolors.OKBLUE + 'Get TLS Certificate signed with RSA Key' + bcolors.ENDC)
     # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
     if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'rsa.test.pem.crt', 'rsa.test.pem.key',
                                       cipher_suite='rsa_2048'):
         print('Exiting...')
         exit(1)
 
+    print('\n')
+    print(bcolors.OKBLUE + 'Get TLS Certificate signed with ECDSA Key' + bcolors.ENDC)
     if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
                                       cipher_suite='ecdsa'):
         print('Exiting...')
@@ -71,6 +78,8 @@ if __name__ == "__main__":
     nmos_est_client.client_cert_path = 'rsa.test.pem.crt'
     nmos_est_client.client_key_path = 'rsa.test.pem.key'
 
+    print('\n')
+    print(bcolors.OKBLUE + 'Renew TLS Certificate signed with RSA Key' + bcolors.ENDC)
     # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
     if not nmos_est_client.renewCert('camera-1.workshop.nmos.tv', 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
         print('Exiting...')

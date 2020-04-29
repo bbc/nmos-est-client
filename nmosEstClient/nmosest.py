@@ -24,6 +24,20 @@ import OpenSSL.crypto as openssl
 
 NUM_TRY_LATER_ATTEMPTS = 2  # Number of times request should be resent on HTTP 202-Try Later
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+PASSED = bcolors.OKGREEN + 'Passed' + bcolors.ENDC
+FAILED = bcolors.FAIL + 'Failed' + bcolors.ENDC
+
 
 class NmosEst(object):
     def __init__(self, host, port,
@@ -91,7 +105,7 @@ class NmosEst(object):
 
         cert_is_valid = True
         for test in test_results:
-            result = ('Passed' if test_results[test] else 'Failed')
+            result = (PASSED if test_results[test] else FAILED)
             print('Test {}: {}'.format(test, result))
             if not test_results[test]:
                 cert_is_valid = False
