@@ -51,7 +51,6 @@ if __name__ == "__main__":
 
     nmos_est_client = NmosEst(host, port, None, client_cert_path, client_key_path)
 
-
     print('\n')
     print(bcolors.OKBLUE + 'Get Root CA' + bcolors.ENDC)
     # Get latest EST server CA certs.
