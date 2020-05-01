@@ -34,6 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("--cacert", default='cacert.pem')
     parser.add_argument("--cert", default='certs/man1.ecdsa.product1.cert.chain.pem')
     parser.add_argument("--key", default='certs/man1.ecdsa.product1.key.pem')
+    parser.add_argument("--hostname", default='camera-1.workshop.nmos.tv')
     args = parser.parse_args()
 
     # Location of EST Server
@@ -43,6 +44,9 @@ if __name__ == "__main__":
     ca_cert_path = args.cacert
     client_cert_path = args.cert
     client_key_path = args.key
+
+    # Hostname of the client, to be used to generate the CSR
+    hostname = args.hostname
 
     print('Using EST Server {}:{}'.format(host, port))
     print('Root CA: {}'.format(ca_cert_path))
@@ -61,14 +65,14 @@ if __name__ == "__main__":
     print('\n')
     print(bcolors.OKBLUE + 'Get TLS Certificate signed with RSA Key' + bcolors.ENDC)
     # Request TLS Server certificate from EST server, using manufacturer issued client certificate for authentication
-    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'rsa.test.pem.crt', 'rsa.test.pem.key',
+    if not nmos_est_client.getNewCert(hostname, 'rsa.test.pem.crt', 'rsa.test.pem.key',
                                       cipher_suite='rsa_2048'):
         print('Exiting...')
         exit(1)
 
     print('\n')
     print(bcolors.OKBLUE + 'Get TLS Certificate signed with ECDSA Key' + bcolors.ENDC)
-    if not nmos_est_client.getNewCert('camera-1.workshop.nmos.tv', 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
+    if not nmos_est_client.getNewCert(hostname, 'ecdsa.test.pem.crt', 'ecdsa.test.pem.key',
                                       cipher_suite='ecdsa'):
         print('Exiting...')
         exit(1)
@@ -80,6 +84,6 @@ if __name__ == "__main__":
     print('\n')
     print(bcolors.OKBLUE + 'Renew TLS Certificate signed with RSA Key' + bcolors.ENDC)
     # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
-    if not nmos_est_client.renewCert('camera-1.workshop.nmos.tv', 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
+    if not nmos_est_client.renewCert(hostname, 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
         print('Exiting...')
         exit(1)
