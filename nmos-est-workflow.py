@@ -84,6 +84,7 @@ if __name__ == "__main__":
     print('\n')
     print(bcolors.OKBLUE + 'Renew TLS Certificate signed with RSA Key' + bcolors.ENDC)
     # Renew TLS Server certificate from EST server, using previously issued certificate for authentication
-    if not nmos_est_client.renewCert(hostname, 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.crt'):
+    if not nmos_est_client.renewCert(hostname, 'rsa.test-renew.pem.crt', 'rsa.test-renew.pem.key',
+                                     cipher_suite='rsa_2048'):
         print('Exiting...')
         exit(1)

@@ -59,7 +59,7 @@ The EST Server is test under normal operation for:
 * The EST server correctly issues an ECDSA TLS server certificate
     * Using the previously issued client certificate for authentication and authorisation
 
-The EST Server is test under incorrect operation for:
+The EST Server is tested under incorrect operation for:
 * The EST server does not issue an TLS certificate
     * When the EST client presents a rogue manufacturer's signed client certificate
 * The EST server does not issue a TLS certificate if a non permitted cipher suite is requested

@@ -139,14 +139,14 @@ class TestNmosEstServer(object):
         nmos_est_client = NmosEst(self.host, self.port, CACERT_PATH, EXTERNAL_CERT_PATH, EXTERNAL_KEY_PATH)
         nmos_est_client.setImplictTrustAnchor(CACERT_PATH)
 
-        # Should not return a certificate
+        # Should return a certificate
         result = nmos_est_client.getNewCert('test.com', RESULT_RSA_CERT_PATH, RESULT_RSA_KEY_PATH, cipher_suite='rsa_2048')
         if not result:
             return self.create_test_result_object("Get Certificate",
                                                   False,
                                                   "EST Server did not returned RSA certificate")
 
-        # Should not return a certificate
+        # Should return a certificate
         result = nmos_est_client.getNewCert('test.com', RESULT_ECDSA_CERT_PATH, RESULT_ECDSA_KEY_PATH, cipher_suite='ecdsa')
         if not result:
             return self.create_test_result_object("Get Certificate",
@@ -165,14 +165,14 @@ class TestNmosEstServer(object):
         nmos_est_client = NmosEst(self.host, self.port, CACERT_PATH, RESULT_RSA_CERT_PATH, RESULT_RSA_KEY_PATH)
         nmos_est_client.setImplictTrustAnchor(CACERT_PATH)
 
-        # Should not return a certificate
+        # Should return a certificate
         result = nmos_est_client.renewCert('test.com', 'test_cert.pem', 'test_key.pem', cipher_suite='rsa_2048')
         if not result:
             return self.create_test_result_object("Renew Certificate",
                                                   False,
                                                   "EST Server did not returned RSA certificate")
 
-        # Should not return a certificate
+        # Should return a certificate
         nmos_est_client.client_cert_path = RESULT_ECDSA_CERT_PATH
         nmos_est_client.client_key_path = RESULT_ECDSA_KEY_PATH
         result = nmos_est_client.renewCert('test.com', 'test_cert.pem', 'test_key.pem', cipher_suite='ecdsa')
