@@ -169,7 +169,7 @@ class NmosEst(object):
 
         return date
 
-    def _createCsr(self, common_name, subject_alt_name=None, cipher_suite='rsa_2048'):
+    def _createCsr(self, common_name, subject_alt_name=None, cipher_suite='rsa_2048', private_key=None):
         """Create CSR and private key
 
         Args:
@@ -195,7 +195,8 @@ class NmosEst(object):
                                                      organizational_unit=organizational_unit,
                                                      email_address=email_address,
                                                      cipher_suite=cipher_suite,
-                                                     subject_alt_name=subject_alt_name)
+                                                     subject_alt_name=subject_alt_name,
+                                                     private_key=private_key)
 
         # Add OID extension for certificate profile
         # profile_ext = openssl.X509Extension(b'1.3.6.1.4.1.311.20.2', False, b'pc-client')
@@ -277,6 +278,32 @@ class NmosEst(object):
 
         self.inspectCert(cert_response)
         self.verifyNmosCert(cert_response)
+
+        return True
+
+    def serverKeyGen(self, hostname, newCertPath, newKeyPath, cipher_suite='rsa_2048'):
+        """
+        Get new certificate with the EST server generating the key pair
+        """
+
+        private_key_unused, csr = self._createCsr(hostname, cipher_suite=cipher_suite)
+
+        client_cert = (self.client_cert_path, self.client_key_path)
+
+        cert_response, private_key = self._request_cert(self.estClient.serverkeygen, csr, client_cert)
+        if not cert_response or not private_key:
+            print('Failed to renew TLS certificate')
+            return False
+
+        # Responses are base 64 encoded
+        print('Cert: ' + cert_response.decode('ascii'))  # pkcs7 format
+        print('Server generate key: ' + private_key.decode('ascii'))  # pkcs8 format
+
+        # self._writeDataToFile(private_key, newKeyPath)
+        # self._writeDataToFile(cert_response, newCertPath)
+
+        # self.inspectCert(cert_response)
+        # self.verifyNmosCert(cert_response)
 
         return True
 
