@@ -295,15 +295,11 @@ class NmosEst(object):
             print('Failed to renew TLS certificate')
             return False
 
-        # Responses are base 64 encoded
-        print('Cert: ' + cert_response.decode('ascii'))  # pkcs7 format
-        print('Server generate key: ' + private_key.decode('ascii'))  # pkcs8 format
+        self._writeDataToFile(private_key, newKeyPath)
+        self._writeDataToFile(cert_response, newCertPath)
 
-        # self._writeDataToFile(private_key, newKeyPath)
-        # self._writeDataToFile(cert_response, newCertPath)
-
-        # self.inspectCert(cert_response)
-        # self.verifyNmosCert(cert_response)
+        self.inspectCert(cert_response)
+        self.verifyNmosCert(cert_response)
 
         return True
 
